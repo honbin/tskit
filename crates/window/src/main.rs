@@ -73,7 +73,7 @@ fn main() -> ExitCode {
 
     let stdin = io::stdin();
     let stdout = io::stdout();
-    let mut out = stdout.lock();
+    let mut out = io::BufWriter::new(stdout.lock());
     let (mut kept, mut skipped, mut total) = (0u64, 0u64, 0u64);
 
     for line in stdin.lock().lines() {
@@ -104,6 +104,16 @@ fn main() -> ExitCode {
                 }
             }
         }
+    }
+
+    // With buffering, a downstream close (e.g. `| head`) can surface here instead
+    // of mid-loop; treat it as a clean stop too, so the exit code stays consistent.
+    if let Err(e) = out.flush() {
+        if e.kind() == io::ErrorKind::BrokenPipe {
+            return ExitCode::SUCCESS;
+        }
+        eprintln!("incident-window: write error: {e}");
+        return ExitCode::FAILURE;
     }
 
     if skipped > 0 {
