@@ -1,4 +1,4 @@
-//! `incident-window-audit` — report where observed events sit inside a requested
+//! `ts-window-audit` — report where observed events sit inside a requested
 //! window, and whether the input reached the fetch's row limit.
 //!
 //! A Unix filter: reads RFC3339 timestamps from stdin (leading token per line),
@@ -8,7 +8,7 @@
 //! exists — the reader connects it to the query's sort order and conditions.
 //!
 //!     cat alb.jsonl | jq -r .time |
-//!       incident-window-audit --from … --to … --limit 10000
+//!       ts-window-audit --from … --to … --limit 10000
 //!
 //! `--limit` is compared against the input row count (parsed + unparseable, since
 //! the fetch cap counts both), which may still differ from the original fetch
@@ -24,10 +24,10 @@ use tstamp::parse_line;
 use window_audit::{Audit, Observed, Signal, Window, audit};
 
 const HELP: &str = "\
-incident-window-audit — report the observed range of stdin timestamps in a window
+ts-window-audit — report the observed range of stdin timestamps in a window
 
 usage:
-    incident-window-audit --from <RFC3339> --to <RFC3339> [--limit <N>]
+    ts-window-audit --from <RFC3339> --to <RFC3339> [--limit <N>]
 
 Reads RFC3339 timestamps from stdin (leading token per line). Reports the window,
 the observed first/last, the gap at each edge, and signals (EMPTY, LIMIT_REACHED,
@@ -38,7 +38,7 @@ rows (parsed + unparseable), which may differ from the original fetch count.
 
 example:
     cat alb.jsonl | jq -r .time |
-      incident-window-audit --from 2026-10-10T10:00:00+09:00 \\
+      ts-window-audit --from 2026-10-10T10:00:00+09:00 \\
                             --to   2026-10-10T11:00:00+09:00 --limit 10000";
 
 struct Args {
@@ -196,7 +196,7 @@ fn main() -> ExitCode {
     let args = match parse_args() {
         Ok(a) => a,
         Err(msg) => {
-            eprintln!("incident-window-audit: {msg}");
+            eprintln!("ts-window-audit: {msg}");
             return ExitCode::FAILURE;
         }
     };
@@ -209,7 +209,7 @@ fn main() -> ExitCode {
         let line = match line {
             Ok(l) => l,
             Err(e) => {
-                eprintln!("incident-window-audit: read error: {e}");
+                eprintln!("ts-window-audit: read error: {e}");
                 return ExitCode::FAILURE;
             }
         };
@@ -247,7 +247,7 @@ fn main() -> ExitCode {
         if e.kind() == io::ErrorKind::BrokenPipe {
             return ExitCode::SUCCESS;
         }
-        eprintln!("incident-window-audit: write error: {e}");
+        eprintln!("ts-window-audit: write error: {e}");
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS

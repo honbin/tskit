@@ -5,5 +5,5 @@ edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "incident-dist"
+name = "ts-dist"
 path = "src/main.rs"

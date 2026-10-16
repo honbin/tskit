@@ -75,7 +75,7 @@ pub fn render_html(series: &[Series], offset: FixedOffset) -> String {
     }
     format!(
         "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n\
-         <title>incident-timeline</title>\n<style>{CSS}</style>\n</head>\n\
+         <title>ts-timeline</title>\n<style>{CSS}</style>\n</head>\n\
          <body>\n{body}</body>\n</html>\n"
     )
 }

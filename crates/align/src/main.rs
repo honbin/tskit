@@ -1,4 +1,4 @@
-//! `incident-align` — inner-join timestamped series on their timestamp.
+//! `ts-align` — inner-join timestamped series on their timestamp.
 //!
 //! Each file is `RFC3339 <ws> number` (same format as `series`). For every
 //! timestamp present in ALL files, prints one tab-separated row:
@@ -9,9 +9,9 @@
 //! (nested `join`). The derived metric and its peak are a downstream step, which
 //! keeps align single-purpose and its output re-parseable by `series`:
 //!
-//!     incident-align req.txt lat.txt tasks.txt \
+//!     ts-align req.txt lat.txt tasks.txt \
 //!       | awk -F'\t' '{printf "%s\t%.2f\n", $1, $2/60*$3/$4}' \
-//!       | incident-series
+//!       | ts-series
 
 use std::collections::BTreeMap;
 use std::process::ExitCode;
@@ -24,10 +24,10 @@ use tspoint::parse_point;
 type Series = BTreeMap<DateTime<Utc>, f64>;
 
 const HELP: &str = "\
-incident-align — inner-join timestamped series on their timestamp
+ts-align — inner-join timestamped series on their timestamp
 
 usage:
-    incident-align <A> <B> [C ...]
+    ts-align <A> <B> [C ...]
 
 Each file is `RFC3339 <ws> number`, one point per line (same format as series;
 order doesn't matter). For every timestamp present in ALL files, prints:
@@ -41,7 +41,7 @@ fn main() -> ExitCode {
     match run() {
         Ok(code) => code,
         Err(msg) => {
-            eprintln!("incident-align: {msg}");
+            eprintln!("ts-align: {msg}");
             ExitCode::FAILURE
         }
     }
@@ -99,7 +99,7 @@ fn run() -> Result<ExitCode, String> {
         .collect::<Vec<_>>()
         .join(", ");
     eprintln!(
-        "incident-align: {} timestamps common to all {} series ({per_file})",
+        "ts-align: {} timestamps common to all {} series ({per_file})",
         rows.len(),
         files.len()
     );

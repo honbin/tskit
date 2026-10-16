@@ -9,5 +9,5 @@ chrono.workspace = true
 tstamp.workspace = true
 
 [[bin]]
-name = "incident-window-audit"
+name = "ts-window-audit"
 path = "src/main.rs"

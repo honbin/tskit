@@ -1,4 +1,4 @@
-//! `incident-burst` — detect bursts in a stream of timestamped events.
+//! `ts-burst` — detect bursts in a stream of timestamped events.
 //!
 //! Reads one timestamp per line on stdin, buckets events per second, and prints
 //! a histogram plus headline numbers (total / peak rate / first / last / span).
@@ -9,8 +9,8 @@
 //! mental conversion. (A `--utc` / `--offset` flag can relax this later.)
 //!
 //! Examples:
-//!     jq -r 'select(.status == 502) | .timestamp' alb.jsonl | incident-burst
-//!     grep SIGTERM app.log | awk '{print $1}' | incident-burst
+//!     jq -r 'select(.status == 502) | .timestamp' alb.jsonl | ts-burst
+//!     grep SIGTERM app.log | awk '{print $1}' | ts-burst
 
 use std::collections::BTreeMap;
 use std::io::{self, BufRead, Write};
@@ -27,17 +27,17 @@ const BAR_WIDTH: usize = 30;
 const FILL_LIMIT: i64 = 3600;
 
 const HELP: &str = "\
-incident-burst — per-second histogram of timestamped events
+ts-burst — per-second histogram of timestamped events
 
 usage:
-    <timestamps> | incident-burst
-    incident-burst -h | --help
+    <timestamps> | ts-burst
+    ts-burst -h | --help
 
 Reads one RFC3339 timestamp per line on stdin and prints a per-second histogram
 plus total / peak / first / last / span. All lines must share one UTC offset.
 
 example:
-    jq -r 'select(.status==502) | .time' alb.jsonl | incident-burst";
+    jq -r 'select(.status==502) | .time' alb.jsonl | ts-burst";
 
 fn main() -> io::Result<()> {
     if let Some(arg) = std::env::args().nth(1) {
@@ -47,7 +47,7 @@ fn main() -> io::Result<()> {
                 return Ok(());
             }
             other => {
-                eprintln!("incident-burst: unexpected argument: {other}\n\n{HELP}");
+                eprintln!("ts-burst: unexpected argument: {other}\n\n{HELP}");
                 std::process::exit(1);
             }
         }
@@ -67,7 +67,7 @@ fn main() -> io::Result<()> {
                     // Keep one display offset for the whole stream so rendered
                     // times stay aligned with the source log.
                     Some(first) if first != this => {
-                        eprintln!("incident-burst: mixed UTC offsets: {first} and {this}");
+                        eprintln!("ts-burst: mixed UTC offsets: {first} and {this}");
                         std::process::exit(1);
                     }
                     Some(_) => {}
@@ -83,13 +83,13 @@ fn main() -> io::Result<()> {
     }
 
     if skipped > 0 {
-        eprintln!("incident-burst: skipped {skipped} unparseable line(s)");
+        eprintln!("ts-burst: skipped {skipped} unparseable line(s)");
     }
 
     let counts = counts_by_second(&epoch_secs);
     let Some(summary) = summarize(&counts) else {
         eprintln!(
-            "incident-burst: no parseable timestamps on stdin \
+            "ts-burst: no parseable timestamps on stdin \
              (expected RFC3339 with offset, e.g. 2026-09-03T10:21:31.124+09:00)"
         );
         std::process::exit(1);
@@ -105,7 +105,7 @@ fn render(counts: &BTreeMap<i64, u64>, summary: &Summary, offset: FixedOffset) -
     let fill = span <= FILL_LIMIT;
     if !fill {
         eprintln!(
-            "incident-burst: span {span}s over fill limit {FILL_LIMIT}s; showing non-empty seconds only"
+            "ts-burst: span {span}s over fill limit {FILL_LIMIT}s; showing non-empty seconds only"
         );
     }
 

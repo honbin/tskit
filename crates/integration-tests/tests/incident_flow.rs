@@ -6,8 +6,8 @@
 //! bars (cosmetic). If you change burst's summary format on purpose, regenerate:
 //!
 //!     cat events.txt \
-//!       | incident-window --from 2026-09-03T10:21:29+09:00 --to 2026-09-03T10:21:33+09:00 \
-//!       | incident-burst | awk 'f{print} /^$/{f=1}' > expected.txt
+//!       | ts-window --from 2026-09-03T10:21:29+09:00 --to 2026-09-03T10:21:33+09:00 \
+//!       | ts-burst | awk 'f{print} /^$/{f=1}' > expected.txt
 
 use integration_tests::{fixture, run};
 
@@ -17,7 +17,7 @@ fn rediscovers_the_502_peak() {
 
     // triage flow: narrow to the incident window, then find the burst
     let windowed = run(
-        "incident-window",
+        "ts-window",
         &[
             "--from",
             "2026-09-03T10:21:29+09:00",
@@ -28,7 +28,7 @@ fn rediscovers_the_502_peak() {
     );
     assert!(windowed.status.success());
 
-    let shaped = run("incident-burst", &[], &windowed.stdout);
+    let shaped = run("ts-burst", &[], &windowed.stdout);
     assert!(shaped.status.success());
     let out = String::from_utf8(shaped.stdout).unwrap();
 

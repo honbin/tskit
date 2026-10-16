@@ -8,5 +8,5 @@ license.workspace = true
 tstamp.workspace = true
 
 [[bin]]
-name = "incident-correlate"
+name = "ts-correlate"
 path = "src/main.rs"

@@ -1,11 +1,11 @@
 //! End-to-end smoke tests: run the built binary against fixtures on stdin.
-//! Uses `CARGO_BIN_EXE_incident-series` (set by Cargo) — std only, no dev-dependencies.
+//! Uses `CARGO_BIN_EXE_ts-series` (set by Cargo) — std only, no dev-dependencies.
 
 use std::io::Write;
 use std::process::{Command, Output, Stdio};
 
 fn run(stdin: &str) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_incident-series"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ts-series"))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

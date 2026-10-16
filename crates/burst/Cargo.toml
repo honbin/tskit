@@ -9,5 +9,5 @@ chrono.workspace = true
 tstamp.workspace = true
 
 [[bin]]
-name = "incident-burst"
+name = "ts-burst"
 path = "src/main.rs"

@@ -1,12 +1,12 @@
-//! `incident-dist` — summarize the distribution of a column of numbers on stdin.
+//! `ts-dist` — summarize the distribution of a column of numbers on stdin.
 //!
 //! Reads one number per line and prints count / min / mean / p50 / p90 / p95 /
 //! p99 / max / stddev. Unit-agnostic: pipe whatever you want (ms, seconds,
 //! request counts) and read the output in the same unit.
 //!
 //! Examples:
-//!     jq -r .target_processing_time alb.jsonl | incident-dist
-//!     grep responseTime app.log | awk '{print $NF}' | incident-dist
+//!     jq -r .target_processing_time alb.jsonl | ts-dist
+//!     grep responseTime app.log | awk '{print $NF}' | ts-dist
 
 use std::io::{self, BufRead};
 use std::process::ExitCode;
@@ -14,17 +14,17 @@ use std::process::ExitCode;
 use dist::{parse_number, summarize};
 
 const HELP: &str = "\
-incident-dist — summarize the distribution of a column of numbers
+ts-dist — summarize the distribution of a column of numbers
 
 usage:
-    <numbers> | incident-dist
-    incident-dist -h | --help
+    <numbers> | ts-dist
+    ts-dist -h | --help
 
 Reads one number per line on stdin and prints count / min / mean / p50 / p90 /
 p95 / p99 / max / stddev. Unit-agnostic (ms, seconds, counts — same unit out).
 
 example:
-    jq -r .target_processing_time alb.jsonl | incident-dist";
+    jq -r .target_processing_time alb.jsonl | ts-dist";
 
 fn main() -> ExitCode {
     if let Some(arg) = std::env::args().nth(1) {
@@ -34,7 +34,7 @@ fn main() -> ExitCode {
                 return ExitCode::SUCCESS;
             }
             other => {
-                eprintln!("incident-dist: unexpected argument: {other}\n\n{HELP}");
+                eprintln!("ts-dist: unexpected argument: {other}\n\n{HELP}");
                 return ExitCode::FAILURE;
             }
         }
@@ -46,7 +46,7 @@ fn main() -> ExitCode {
         let line = match line {
             Ok(line) => line,
             Err(e) => {
-                eprintln!("incident-dist: read error: {e}");
+                eprintln!("ts-dist: read error: {e}");
                 return ExitCode::FAILURE;
             }
         };
@@ -61,11 +61,11 @@ fn main() -> ExitCode {
     }
 
     if skipped > 0 {
-        eprintln!("incident-dist: skipped {skipped} unparseable line(s)");
+        eprintln!("ts-dist: skipped {skipped} unparseable line(s)");
     }
 
     let Some(s) = summarize(&mut values) else {
-        eprintln!("incident-dist: no numbers on stdin");
+        eprintln!("ts-dist: no numbers on stdin");
         return ExitCode::FAILURE;
     };
 

@@ -14,7 +14,7 @@ const STREAM: &str = "\
 fn window_then_burst_shapes_only_the_kept_lines() {
     // narrow to [10:21:30, 10:21:35], then look at the shape
     let windowed = run(
-        "incident-window",
+        "ts-window",
         &[
             "--from",
             "2026-09-03T10:21:30+09:00",
@@ -25,7 +25,7 @@ fn window_then_burst_shapes_only_the_kept_lines() {
     );
     assert!(windowed.status.success());
 
-    let shaped = run("incident-burst", &[], &windowed.stdout);
+    let shaped = run("ts-burst", &[], &windowed.stdout);
     assert!(shaped.status.success());
     let out = String::from_utf8(shaped.stdout).unwrap();
 
@@ -41,13 +41,13 @@ fn window_then_burst_shapes_only_the_kept_lines() {
 fn window_filtering_everything_makes_burst_fail() {
     // a window far in the future keeps nothing; burst on empty stdin exits 1
     let windowed = run(
-        "incident-window",
+        "ts-window",
         &["--from", "2027-01-01T00:00:00+09:00"],
         STREAM.as_bytes(),
     );
     assert!(windowed.status.success());
     assert!(windowed.stdout.is_empty());
 
-    let shaped = run("incident-burst", &[], &windowed.stdout);
+    let shaped = run("ts-burst", &[], &windowed.stdout);
     assert!(!shaped.status.success());
 }

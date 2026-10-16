@@ -1,12 +1,12 @@
 //! End-to-end smoke tests: run the built binary against fixtures on stdin.
-//! Uses `CARGO_BIN_EXE_incident-burst` (set by Cargo for integration tests) so there are
+//! Uses `CARGO_BIN_EXE_ts-burst` (set by Cargo for integration tests) so there are
 //! no extra dev-dependencies — just std.
 
 use std::io::Write;
 use std::process::{Command, Output, Stdio};
 
 fn run(stdin: &str) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_incident-burst"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ts-burst"))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

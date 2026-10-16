@@ -1,10 +1,10 @@
 //! End-to-end smoke tests: run the built binary against fixture files.
-//! Uses `CARGO_BIN_EXE_incident-align` and `CARGO_MANIFEST_DIR` (set by Cargo).
+//! Uses `CARGO_BIN_EXE_ts-align` and `CARGO_MANIFEST_DIR` (set by Cargo).
 
 use std::process::{Command, Output};
 
 fn run(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_incident-align"))
+    Command::new(env!("CARGO_BIN_EXE_ts-align"))
         .args(args)
         .output()
         .expect("run align")

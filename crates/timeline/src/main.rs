@@ -1,9 +1,9 @@
-//! `incident-timeline` — lay out `timestamp value` series on a shared time axis
+//! `ts-timeline` — lay out `timestamp value` series on a shared time axis
 //! as a self-contained HTML page (inline SVG, no JavaScript, no external
 //! assets). Every signal is the same shape, so a per-second log count and a
 //! metric drop in the same way:
 //!
-//!     incident-timeline --series 502.txt --series cpu.txt --series latency.txt > report.html
+//!     ts-timeline --series 502.txt --series cpu.txt --series latency.txt > report.html
 
 use std::io::{self, Write};
 use std::process::ExitCode;
@@ -12,12 +12,12 @@ use chrono::FixedOffset;
 use timeline::{Series, parse_offset, render_html};
 
 const HELP: &str = "\
-incident-timeline — lay out timestamp/value series on a shared time axis
+ts-timeline — lay out timestamp/value series on a shared time axis
 
 usage:
-    incident-timeline [--display-offset ±HH:MM] --series <file> [--series <file>]... > report.html
+    ts-timeline [--display-offset ±HH:MM] --series <file> [--series <file>]... > report.html
 
-Each --series file is `RFC3339 value` per line (same format as incident-series;
+Each --series file is `RFC3339 value` per line (same format as ts-series;
 feed a 502 count via `stats count() by bin(1s)` the same way as a metric). Every
 series is drawn as a line with a marker per point, on its own y-scale, stacked on
 one shared time axis. The line only connects the points you supply — it does not
@@ -30,13 +30,13 @@ self-contained HTML page (inline SVG, no JavaScript) to stdout. At least one
 input's offset.
 
 example:
-    incident-timeline --series 502.txt --series cpu.txt --series latency.txt > report.html";
+    ts-timeline --series 502.txt --series cpu.txt --series latency.txt > report.html";
 
 fn main() -> ExitCode {
     match run() {
         Ok(code) => code,
         Err(msg) => {
-            eprintln!("incident-timeline: {msg}");
+            eprintln!("ts-timeline: {msg}");
             ExitCode::FAILURE
         }
     }
@@ -115,7 +115,7 @@ fn load_series(path: &str, offset: &mut Option<FixedOffset>) -> Result<Series, S
         return Err(format!("{path}: no 'timestamp value' points found"));
     }
     if skipped > 0 {
-        eprintln!("incident-timeline: {path}: skipped {skipped} unparseable line(s)");
+        eprintln!("ts-timeline: {path}: skipped {skipped} unparseable line(s)");
     }
     points.sort_by_key(|&(t, _)| t);
     Ok(Series {

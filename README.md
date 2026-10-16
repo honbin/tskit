@@ -1,32 +1,34 @@
-# incident-kit
+# tskit
 
-Small Unix-style tools for incident investigation, written in Rust.
+Small Unix-style tools for the shape of timestamped data — the waveform,
+distribution, co-occurrence, and window coverage of logs and time series.
+Written in Rust, born out of incident triage.
 
 Each tool reads from stdin, does one thing, and writes to stdout — so they
 compose with `grep` / `jq` / `awk` and with each other.
 
 ## Tools
 
-| tool                 | what it does                                       |
-|----------------------|----------------------------------------------------|
-| `incident-burst`     | Detect bursts in timestamped events                |
-| `incident-window`    | Pass through lines whose timestamp is in a range   |
-| `incident-window-audit` | Report the observed timestamp range inside a window |
-| `incident-dist`      | Summarize the distribution of a column of numbers  |
-| `incident-correlate` | How often two timestamped streams co-occur in time |
-| `incident-series`    | View a `timestamp value` series as a sparkline     |
-| `incident-align`     | Inner-join timestamped series on their timestamp   |
-| `incident-timeline`  | Stack timestamp/value series on a shared time axis |
+| tool              | what it does                                        |
+|-------------------|-----------------------------------------------------|
+| `ts-burst`        | Detect bursts in timestamped events                 |
+| `ts-window`       | Pass through lines whose timestamp is in a range    |
+| `ts-window-audit` | Report the observed timestamp range inside a window |
+| `ts-dist`         | Summarize the distribution of a column of numbers   |
+| `ts-correlate`    | How often two timestamped streams co-occur in time  |
+| `ts-series`       | View a `timestamp value` series as a sparkline      |
+| `ts-align`        | Inner-join timestamped series on their timestamp    |
+| `ts-timeline`     | Stack timestamp/value series on a shared time axis  |
 
-The binaries are namespaced (`incident-*`) so they don't clash with other tools
+The binaries are namespaced (`ts-*`) so they don't clash with other tools
 on your `PATH`; alias them to shorter names if you like.
 
 ## Install
 
-Install the `incident-*` binaries straight from GitHub:
+Install the `ts-*` binaries straight from GitHub:
 
 ```
-cargo install --git https://github.com/honbin/incident-kit --locked \
+cargo install --git https://github.com/honbin/tskit --locked \
   burst window window-audit dist correlate series align timeline
 ```
 
@@ -36,7 +38,7 @@ that's on your `PATH`.
 Install only the tools you want — just name fewer:
 
 ```
-cargo install --git https://github.com/honbin/incident-kit --locked burst
+cargo install --git https://github.com/honbin/tskit --locked burst
 ```
 
 Developing from a local clone? Use `--path` instead:
@@ -53,12 +55,12 @@ tools composable and avoids guessing:
 
 - **unit** — bare epoch values don't say whether they are seconds,
   milliseconds, or microseconds.
-- **display offset** — `incident-burst`, `incident-series`, and
-  `incident-timeline` render times in the input's offset, which an epoch value
+- **display offset** — `ts-burst`, `ts-series`, and
+  `ts-timeline` render times in the input's offset, which an epoch value
   doesn't carry.
 
 Other formats should be normalized to RFC3339 before piping them into
-incident-kit — a job for the shell. The examples use `gawk` (macOS: `brew
+tskit — a job for the shell. The examples use `gawk` (macOS: `brew
 install gawk`):
 
 ```sh
@@ -95,19 +97,19 @@ Three tiers, each narrower and cheaper than the last:
 - **per-tool CLI** (`crates/<tool>/tests/cli.rs`) — one binary: stdin → stdout →
   exit code.
 - **integration** (`crates/integration-tests/`) — the tools *composed*: real
-  pipelines like `incident-window | incident-burst`, kept to a few representative
+  pipelines like `ts-window | ts-burst`, kept to a few representative
   flows plus a golden fixture (`fixtures/alb-502-incident/`) that must still
   rediscover a known peak. Run via a whole-workspace `cargo test` so every binary
   is built.
 
-## incident-burst
+## ts-burst
 
 ```
 # ALB 502s per second
-jq -r 'select(.status == 502) | .timestamp' alb.jsonl | incident-burst
+jq -r 'select(.status == 502) | .timestamp' alb.jsonl | ts-burst
 
 # SIGTERM occurrences
-grep SIGTERM app.log | awk '{print $1}' | incident-burst
+grep SIGTERM app.log | awk '{print $1}' | ts-burst
 ```
 
 Input: one RFC3339 timestamp per line, offset required (e.g.
@@ -131,14 +133,14 @@ last     10:21:33
 span     4s (first→last)
 ```
 
-## incident-window
+## ts-window
 
 ```
 # narrow a raw log to the incident window, then look at the shape
 cat alb.jsonl \
-  | incident-window --from 2026-09-03T10:20:00+09:00 --to 2026-09-03T10:30:00+09:00 \
+  | ts-window --from 2026-09-03T10:20:00+09:00 --to 2026-09-03T10:30:00+09:00 \
   | jq -r 'select(.elb_status_code == 502) | .time' \
-  | incident-burst
+  | ts-burst
 ```
 
 Reads the RFC3339 timestamp from each line (leading token, quotes stripped) and
@@ -146,12 +148,12 @@ prints the original line unchanged when it falls in `[--from, --to]` (inclusive;
 at least one bound required). Comparison is on the instant, so the bounds and the
 lines may use any offset. A `kept N / total` summary goes to stderr.
 
-## incident-window-audit
+## ts-window-audit
 
 ```
 # before trusting the numbers: where does the fetched data sit in the window?
 jq -r .time alb.jsonl \
-  | incident-window-audit --from 2026-09-03T10:20:00+09:00 --to 2026-09-03T10:30:00+09:00 --limit 10000
+  | ts-window-audit --from 2026-09-03T10:20:00+09:00 --to 2026-09-03T10:30:00+09:00 --limit 10000
 ```
 
 Reads RFC3339 timestamps from stdin and reports the observed first/last against
@@ -184,14 +186,14 @@ signals:
   LIMIT_REACHED
 ```
 
-## incident-dist
+## ts-dist
 
 ```
-# response-time distribution for the incident window
+# response-time distribution over a time window
 cat alb.jsonl \
-  | incident-window --from 2026-09-03T10:20:00+09:00 --to 2026-09-03T10:30:00+09:00 \
+  | ts-window --from 2026-09-03T10:20:00+09:00 --to 2026-09-03T10:30:00+09:00 \
   | jq -r .target_processing_time \
-  | incident-dist
+  | ts-dist
 ```
 
 Reads one number per line (leading token, quotes stripped; NaN/inf rejected) and
@@ -199,11 +201,11 @@ prints count / min / mean / p50 / p90 / p95 / p99 / max / stddev. Unit-agnostic 
 feed ms, seconds, or counts and read the result in the same unit. Percentiles are
 nearest-rank (no interpolation), so each is an actually-observed value.
 
-## incident-correlate
+## ts-correlate
 
 ```
 # did the 502s and the SIGTERMs cluster at the same time?
-incident-correlate 502.txt sigterm.txt --window 5s
+ts-correlate 502.txt sigterm.txt --window 5s
 ```
 
 Reads one RFC3339 timestamp per line from two files and reports, in both
@@ -213,20 +215,20 @@ Both directions matter — "71% of 502s were near a SIGTERM" and "83% of SIGTERM
 were near a 502"
 are different facts. It counts matched events, not pairs.
 
-## incident-series
+## ts-series
 
 ```
-# shape of a CloudWatch metric over the incident window, with the peak minute
+# shape of a CloudWatch metric over a time window, with the peak minute
 aws cloudwatch get-metric-statistics ... \
   --query 'Datapoints[].[Timestamp,Sum]' --output text \
-  | incident-series
+  | ts-series
 ```
 
 Reads `RFC3339 <whitespace> number` lines (order doesn't matter — sorted
 internally), one point per line. Prints a row per point (time, sparkline level,
 value), then points / sum / min / max with the time of each extreme. The
-sparkline is a linear map onto `▁▂▃▄▅▆▇█`. Unlike `incident-burst` (which counts
-raw event occurrences), `incident-series` consumes values that are already
+sparkline is a linear map onto `▁▂▃▄▅▆▇█`. Unlike `ts-burst` (which counts
+raw event occurrences), `ts-series` consumes values that are already
 aggregated per timestamp — e.g. CloudWatch datapoints.
 
 ```
@@ -240,38 +242,38 @@ min              12  at 10:20:00
 max             103  at 10:22:00
 ```
 
-## incident-align
+## ts-align
 
 Inner-join N `timestamp value` files on their timestamp. For every timestamp
 present in *all* inputs it prints `<RFC3339>` then one tab-separated value per
-file, sorted by time. Only the join lives in `incident-align` — the fragile part
+file, sorted by time. Only the join lives in `ts-align` — the fragile part
 to do in shell (nested `join`); the derived metric and its peak are a downstream
-step, which keeps the output re-parseable by `incident-series`:
+step, which keeps the output re-parseable by `ts-series`:
 
 ```
 # per-task concurrency ≈ (rate × latency) / tasks, and when it peaked
-incident-align req.txt lat.txt tasks.txt \
+ts-align req.txt lat.txt tasks.txt \
   | awk -F'\t' '{printf "%s\t%.2f\n", $1, $2/60*$3/$4}' \
-  | incident-series
+  | ts-series
 ```
 
 where req / lat / tasks are CloudWatch RequestCount (Sum), TargetResponseTime
 (Average) and LiveTaskCount (Minimum). A `common N / per-file totals` line goes to
 stderr so dropped (non-common) timestamps are visible.
 
-## incident-timeline
+## ts-timeline
 
-![incident-timeline: four timestamp/value series stacked on one shared time axis](docs/timeline.png)
+![ts-timeline: four timestamp/value series stacked on one shared time axis](docs/timeline.png)
 
 ```
 # a 502 burst next to CPU / latency / task count on one time axis
-incident-timeline \
+ts-timeline \
   --series 502.txt --series cpu.txt --series latency.txt --series tasks.txt \
   > report.html
 ```
 
 Reads one or more `RFC3339 <whitespace> number` files via `--series` (same format
-as `incident-series`; a per-second log count from `stats count() by bin(1s)` drops
+as `ts-series`; a per-second log count from `stats count() by bin(1s)` drops
 in exactly like a metric). Writes a self-contained HTML page — inline SVG, no
 JavaScript, no external assets — to stdout, ready to open or share.
 
@@ -286,7 +288,7 @@ shows them at a fixed offset instead (e.g. JST), leaving values and positions
 unchanged.
 
 Unlike the summary tools, this one is for *shape and simultaneity* across signals —
-the part a per-metric summary drops. Like `incident-correlate` and `incident-align`
+the part a per-metric summary drops. Like `ts-correlate` and `ts-align`
 it reads files (not stdin), and it emits HTML rather than text.
 
 ## License

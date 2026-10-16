@@ -9,5 +9,5 @@ chrono.workspace = true
 tspoint.workspace = true
 
 [[bin]]
-name = "incident-timeline"
+name = "ts-timeline"
 path = "src/main.rs"
