@@ -1,11 +1,11 @@
 # tskit
 
-Small Unix-style tools for the shape of timestamped data — the waveform,
-distribution, co-occurrence, and window coverage of logs and time series.
+Small Unix-style tools for exploring the shape of timestamped data — waveforms,
+distributions, co-occurrence, and window coverage in logs and time series.
 Written in Rust, born out of incident triage.
 
 Each tool reads from stdin, does one thing, and writes to stdout — so they
-compose with `grep` / `jq` / `awk` and with each other.
+compose naturally with `grep` / `jq` / `awk` and with each other.
 
 ## Tools
 
