@@ -11,7 +11,7 @@
 //! Times are shown in the input's offset (like `burst`), and all points must
 //! share one offset — mixed offsets are rejected.
 
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, Write};
 use std::process::ExitCode;
 
 use chrono::{DateTime, FixedOffset};
@@ -90,11 +90,19 @@ fn main() -> ExitCode {
     }
 
     points.sort_by_key(|(ts, _)| *ts);
-    render(&points);
+    let mut out = io::BufWriter::new(io::stdout().lock());
+    if let Err(e) = render(&mut out, &points).and_then(|()| out.flush()) {
+        // Downstream closed the pipe (e.g. `| head`): stop quietly.
+        if e.kind() == io::ErrorKind::BrokenPipe {
+            return ExitCode::SUCCESS;
+        }
+        eprintln!("ts-series: write error: {e}");
+        return ExitCode::FAILURE;
+    }
     ExitCode::SUCCESS
 }
 
-fn render(points: &[(DateTime<FixedOffset>, f64)]) {
+fn render(out: &mut impl Write, points: &[(DateTime<FixedOffset>, f64)]) -> io::Result<()> {
     let min = points.iter().map(|(_, v)| *v).fold(f64::INFINITY, f64::min);
     let max = points
         .iter()
@@ -114,24 +122,40 @@ fn render(points: &[(DateTime<FixedOffset>, f64)]) {
         .unwrap();
 
     for (ts, value) in points {
-        println!(
+        writeln!(
+            out,
             "{}  {}  {:>10}",
             fmt_time(*ts),
             RAMP[block_index(*value, min, max)],
             fmt_val(*value)
-        );
+        )?;
     }
 
-    println!();
-    println!("points   {:>10}", points.len());
-    println!("sum      {:>10}", fmt_val(sum));
-    println!("min      {:>10}  at {}", fmt_val(min), fmt_time(min_ts));
-    println!("max      {:>10}  at {}", fmt_val(max), fmt_time(max_ts));
+    writeln!(out)?;
+    writeln!(out, "points   {:>10}", points.len())?;
+    writeln!(out, "sum      {:>10}", fmt_val(sum))?;
+    writeln!(
+        out,
+        "min      {:>10}  at {}",
+        fmt_val(min),
+        fmt_time(min_ts)
+    )?;
+    writeln!(
+        out,
+        "max      {:>10}  at {}",
+        fmt_val(max),
+        fmt_time(max_ts)
+    )?;
+    Ok(())
 }
 
 /// Format an integer-valued float without a decimal tail (`103`, not `103.000`),
 /// otherwise with three decimals (`0.145`).
 fn fmt_val(v: f64) -> String {
+    if v == 0.0 {
+        // -0.0 compares equal to 0.0 but formats as "-0"
+        return "0".to_string();
+    }
     if v.fract() == 0.0 && v.abs() < 1e15 {
         format!("{v:.0}")
     } else {

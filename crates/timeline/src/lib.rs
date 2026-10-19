@@ -218,7 +218,7 @@ fn fmt_minmax(min: f64, max: f64) -> (String, String) {
     // compare the rounded labels as numbers, not as strings: "1" and "1.000"
     // read as the same value, so a distinct min/max must still fall back to full.
     let reads_same = lo.parse::<f64>().ok() == hi.parse::<f64>().ok();
-    let values_differ = format!("{min}") != format!("{max}");
+    let values_differ = min != max;
     if reads_same && values_differ {
         return (format!("{min}"), format!("{max}"));
     }
@@ -226,6 +226,10 @@ fn fmt_minmax(min: f64, max: f64) -> (String, String) {
 }
 
 fn fmt_val(v: f64) -> String {
+    if v == 0.0 {
+        // -0.0 compares equal to 0.0 but formats as "-0"
+        return "0".to_string();
+    }
     if v.fract() == 0.0 && v.abs() < 1e15 {
         return format!("{v:.0}");
     }
@@ -336,6 +340,7 @@ mod tests {
         assert_eq!(fmt_val(3.049744988363931), "3.050");
         assert_eq!(fmt_val(13158.0), "13158");
         assert_eq!(fmt_val(0.0004), "0.0004"); // tiny: not shown as 0.000
+        assert_eq!(fmt_val(-0.0), "0");
         // distinct values that both round to 1.000 fall back to full
         assert_eq!(
             fmt_minmax(1.0001, 1.0002),
@@ -348,6 +353,8 @@ mod tests {
         );
         // a genuinely flat series shows them equal
         assert_eq!(fmt_minmax(5.0, 5.0), ("5".to_string(), "5".to_string()));
+        // -0 and 0 are the same value: no fallback to "-0"
+        assert_eq!(fmt_minmax(-0.0, 0.0), ("0".to_string(), "0".to_string()));
     }
 
     #[test]

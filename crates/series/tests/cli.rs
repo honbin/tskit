@@ -49,6 +49,15 @@ fn sorts_within_the_same_second() {
 }
 
 #[test]
+fn negative_zero_prints_as_zero() {
+    let out = run("2026-09-03T10:20:00+09:00 -0\n2026-09-03T10:21:00+09:00 1\n");
+    assert!(out.status.success());
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert!(!stdout.contains("-0"), "stdout:\n{stdout}");
+    assert!(stdout.contains("0  at 10:20:00"), "stdout:\n{stdout}");
+}
+
+#[test]
 fn skips_garbage_but_still_succeeds() {
     let out = run(include_str!("fixtures/invalid.txt"));
     assert!(out.status.success());
@@ -62,4 +71,26 @@ fn empty_input_fails_cleanly() {
     assert!(!out.status.success());
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert!(stderr.contains("no 'timestamp value'"), "stderr:\n{stderr}");
+}
+
+#[test]
+fn closed_stdout_exits_quietly() {
+    // reader dropped before spawn, so every write hits a closed pipe (`| head`)
+    let (reader, writer) = std::io::pipe().unwrap();
+    drop(reader);
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ts-series"))
+        .stdin(Stdio::piped())
+        .stdout(writer)
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn series");
+    let _ = child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(include_str!("fixtures/series.txt").as_bytes());
+    let out = child.wait_with_output().expect("wait series");
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(out.status.success(), "stderr:\n{stderr}");
+    assert!(!stderr.contains("Broken pipe"), "stderr:\n{stderr}");
 }

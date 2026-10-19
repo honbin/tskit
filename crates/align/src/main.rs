@@ -14,6 +14,7 @@
 //!       | ts-series
 
 use std::collections::BTreeMap;
+use std::io::{self, Write};
 use std::process::ExitCode;
 
 use align::inner_join;
@@ -80,15 +81,26 @@ fn run() -> Result<ExitCode, String> {
 
     let rows = inner_join(&maps);
 
-    for (instant, values) in &rows {
-        // render in the input's display offset; values go out at full precision
-        // (align feeds downstream math — rounding here would corrupt it)
-        let mut line = instant.with_timezone(&offset).to_rfc3339();
-        for v in values {
-            line.push('\t');
-            line.push_str(&v.to_string());
+    let mut out = io::BufWriter::new(io::stdout().lock());
+    let written = rows
+        .iter()
+        .try_for_each(|(instant, values)| {
+            // render in the input's display offset; values go out at full precision
+            // (align feeds downstream math — rounding here would corrupt it)
+            let mut line = instant.with_timezone(&offset).to_rfc3339();
+            for v in values {
+                line.push('\t');
+                line.push_str(&v.to_string());
+            }
+            writeln!(out, "{line}")
+        })
+        .and_then(|()| out.flush());
+    if let Err(e) = written {
+        // Downstream closed the pipe (e.g. `| head`): stop quietly.
+        if e.kind() == io::ErrorKind::BrokenPipe {
+            return Ok(ExitCode::SUCCESS);
         }
-        println!("{line}");
+        return Err(format!("write error: {e}"));
     }
 
     // report what the inner join dropped, so non-common timestamps aren't silent
@@ -109,17 +121,37 @@ fn run() -> Result<ExitCode, String> {
 /// Read a file of `timestamp value` points into a map keyed by UTC instant
 /// (last value wins on a duplicate timestamp), plus the input's offset and point
 /// count. Errors if the file holds no points.
+///
+/// Unparseable lines and duplicate timestamps are reported on stderr: the
+/// per-file count is of distinct timestamps, so without this both would vanish
+/// from the summary unnoticed.
 fn load(path: &str) -> Result<(Series, FixedOffset, usize), String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
     let mut map = BTreeMap::new();
     let mut offset = None;
+    let (mut skipped, mut duplicates) = (0u64, 0u64);
     for line in text.lines() {
-        if let Some((dt, value)) = parse_point(line) {
-            offset.get_or_insert_with(|| *dt.offset());
-            // key by the UTC instant (full sub-second precision): truncating to
-            // seconds would collide distinct points and join non-equal instants
-            map.insert(dt.to_utc(), value);
+        match parse_point(line) {
+            Some((dt, value)) => {
+                offset.get_or_insert_with(|| *dt.offset());
+                // key by the UTC instant (full sub-second precision): truncating to
+                // seconds would collide distinct points and join non-equal instants
+                if map.insert(dt.to_utc(), value).is_some() {
+                    duplicates += 1;
+                }
+            }
+            None => {
+                if !line.trim().is_empty() {
+                    skipped += 1;
+                }
+            }
         }
+    }
+    if skipped > 0 {
+        eprintln!("ts-align: {path}: skipped {skipped} unparseable line(s)");
+    }
+    if duplicates > 0 {
+        eprintln!("ts-align: {path}: {duplicates} duplicate timestamp(s), last value kept");
     }
     match offset {
         Some(off) => {

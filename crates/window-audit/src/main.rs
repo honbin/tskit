@@ -55,14 +55,23 @@ fn parse_args() -> Result<Args, String> {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--from" => {
+                if from.is_some() {
+                    return Err("--from given more than once".into());
+                }
                 let v = args.next().ok_or("--from requires an RFC3339 value")?;
                 from = Some(DateTime::parse_from_rfc3339(&v).map_err(|e| format!("--from: {e}"))?);
             }
             "--to" => {
+                if to.is_some() {
+                    return Err("--to given more than once".into());
+                }
                 let v = args.next().ok_or("--to requires an RFC3339 value")?;
                 to = Some(DateTime::parse_from_rfc3339(&v).map_err(|e| format!("--to: {e}"))?);
             }
             "--limit" => {
+                if limit.is_some() {
+                    return Err("--limit given more than once".into());
+                }
                 let v = args.next().ok_or("--limit requires a number")?;
                 let n = v.parse::<u64>().map_err(|e| format!("--limit: {e}"))?;
                 if n == 0 {

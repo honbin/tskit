@@ -43,7 +43,12 @@ fn run() -> Result<ExitCode, String> {
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
-            "--window" => window_arg = Some(args.next().ok_or("--window requires a value")?),
+            "--window" => {
+                if window_arg.is_some() {
+                    return Err("--window given more than once".into());
+                }
+                window_arg = Some(args.next().ok_or("--window requires a value")?);
+            }
             "-h" | "--help" => {
                 println!("{HELP}");
                 return Ok(ExitCode::SUCCESS);

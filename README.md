@@ -4,8 +4,9 @@ Small Unix-style tools for exploring the shape of timestamped data — waveforms
 distributions, co-occurrence, and window coverage in logs and time series.
 Written in Rust, born out of incident triage.
 
-Each tool reads from stdin, does one thing, and writes to stdout — so they
-compose naturally with `grep` / `jq` / `awk` and with each other.
+Each tool does one thing and writes to stdout — so they compose naturally with
+`grep` / `jq` / `awk` and with each other. Most read stdin; the ones that take
+several inputs (`ts-correlate`, `ts-align`, `ts-timeline`) read files instead.
 
 ## Tools
 
@@ -263,8 +264,10 @@ ts-align req.txt lat.txt tasks.txt \
 ```
 
 where req / lat / tasks are CloudWatch RequestCount (Sum), TargetResponseTime
-(Average) and LiveTaskCount (Minimum). A `common N / per-file totals` line goes to
-stderr so dropped (non-common) timestamps are visible.
+(Average) and LiveTaskCount (Minimum). A
+`N timestamps common to all K series (file=count, …)` line goes to stderr so
+dropped (non-common) timestamps are visible. Unparseable lines and duplicate
+timestamps (last value kept) are reported per file on stderr too.
 
 ## ts-timeline
 
