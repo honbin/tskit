@@ -49,6 +49,15 @@ fn sorts_within_the_same_second() {
 }
 
 #[test]
+fn negative_zero_prints_as_zero() {
+    let out = run("2026-09-03T10:20:00+09:00 -0\n2026-09-03T10:21:00+09:00 1\n");
+    assert!(out.status.success());
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert!(!stdout.contains("-0"), "stdout:\n{stdout}");
+    assert!(stdout.contains("0  at 10:20:00"), "stdout:\n{stdout}");
+}
+
+#[test]
 fn skips_garbage_but_still_succeeds() {
     let out = run(include_str!("fixtures/invalid.txt"));
     assert!(out.status.success());

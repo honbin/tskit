@@ -152,6 +152,10 @@ fn render(out: &mut impl Write, points: &[(DateTime<FixedOffset>, f64)]) -> io::
 /// Format an integer-valued float without a decimal tail (`103`, not `103.000`),
 /// otherwise with three decimals (`0.145`).
 fn fmt_val(v: f64) -> String {
+    if v == 0.0 {
+        // -0.0 compares equal to 0.0 but formats as "-0"
+        return "0".to_string();
+    }
     if v.fract() == 0.0 && v.abs() < 1e15 {
         format!("{v:.0}")
     } else {
