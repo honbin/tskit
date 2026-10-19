@@ -89,7 +89,7 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    points.sort_by_key(|(ts, _)| ts.timestamp());
+    points.sort_by_key(|(ts, _)| *ts);
     render(&points);
     ExitCode::SUCCESS
 }
