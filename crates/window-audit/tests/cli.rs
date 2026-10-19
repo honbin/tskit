@@ -158,3 +158,14 @@ fn rejects_zero_limit() {
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert!(stderr.contains("--limit must be a positive"), "{stderr}");
 }
+
+#[test]
+fn rejects_repeated_flag() {
+    let out = run(&with(&["--limit", "10", "--limit", "20"]), "");
+    assert!(!out.status.success());
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(
+        stderr.contains("--limit given more than once"),
+        "stderr:\n{stderr}"
+    );
+}

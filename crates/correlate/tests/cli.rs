@@ -68,3 +68,16 @@ fn rejects_bad_window() {
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert!(stderr.contains("invalid duration"), "stderr:\n{stderr}");
 }
+
+#[test]
+fn rejects_repeated_window() {
+    let a = fixture("a.txt");
+    let b = fixture("b.txt");
+    let out = run(&[a.as_str(), b.as_str(), "--window", "5s", "--window", "1s"]);
+    assert!(!out.status.success());
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(
+        stderr.contains("--window given more than once"),
+        "stderr:\n{stderr}"
+    );
+}

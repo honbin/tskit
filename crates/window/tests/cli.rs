@@ -100,3 +100,22 @@ fn rejects_empty_field() {
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert!(stderr.contains("non-empty field name"), "stderr:\n{stderr}");
 }
+
+#[test]
+fn rejects_repeated_flag() {
+    let out = run(
+        &[
+            "--from",
+            "2026-09-03T10:21:30+09:00",
+            "--from",
+            "2026-09-03T10:00:00+09:00",
+        ],
+        "",
+    );
+    assert!(!out.status.success());
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(
+        stderr.contains("--from given more than once"),
+        "stderr:\n{stderr}"
+    );
+}

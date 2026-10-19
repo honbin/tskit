@@ -88,3 +88,22 @@ fn errors_on_a_file_with_no_points() {
         "stderr:\n{stderr}"
     );
 }
+
+#[test]
+fn rejects_repeated_display_offset() {
+    let cpu = fixture("cpu.txt");
+    let out = run(&[
+        "--display-offset",
+        "+09:00",
+        "--display-offset",
+        "+00:00",
+        "--series",
+        cpu.as_str(),
+    ]);
+    assert!(!out.status.success());
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(
+        stderr.contains("--display-offset given more than once"),
+        "stderr:\n{stderr}"
+    );
+}

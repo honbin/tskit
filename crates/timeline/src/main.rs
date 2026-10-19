@@ -51,6 +51,9 @@ fn run() -> Result<ExitCode, String> {
         match arg.as_str() {
             "--series" => files.push(args.next().ok_or("--series requires a file")?),
             "--display-offset" => {
+                if display_offset.is_some() {
+                    return Err("--display-offset given more than once".into());
+                }
                 let v = args.next().ok_or("--display-offset requires a value")?;
                 display_offset = Some(parse_offset(&v)?);
             }

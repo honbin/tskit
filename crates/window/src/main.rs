@@ -47,14 +47,23 @@ fn parse_args() -> Result<Args, String> {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--from" => {
+                if from.is_some() {
+                    return Err("--from given more than once".into());
+                }
                 let v = args.next().ok_or("--from requires an RFC3339 value")?;
                 from = Some(DateTime::parse_from_rfc3339(&v).map_err(|e| format!("--from: {e}"))?);
             }
             "--to" => {
+                if to.is_some() {
+                    return Err("--to given more than once".into());
+                }
                 let v = args.next().ok_or("--to requires an RFC3339 value")?;
                 to = Some(DateTime::parse_from_rfc3339(&v).map_err(|e| format!("--to: {e}"))?);
             }
             "--field" => {
+                if field.is_some() {
+                    return Err("--field given more than once".into());
+                }
                 let name = args.next().ok_or("--field requires a field name")?;
                 if name.is_empty() {
                     return Err("--field requires a non-empty field name".into());
