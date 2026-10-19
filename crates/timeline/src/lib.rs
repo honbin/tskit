@@ -218,7 +218,7 @@ fn fmt_minmax(min: f64, max: f64) -> (String, String) {
     // compare the rounded labels as numbers, not as strings: "1" and "1.000"
     // read as the same value, so a distinct min/max must still fall back to full.
     let reads_same = lo.parse::<f64>().ok() == hi.parse::<f64>().ok();
-    let values_differ = format!("{min}") != format!("{max}");
+    let values_differ = min != max;
     if reads_same && values_differ {
         return (format!("{min}"), format!("{max}"));
     }
@@ -353,6 +353,8 @@ mod tests {
         );
         // a genuinely flat series shows them equal
         assert_eq!(fmt_minmax(5.0, 5.0), ("5".to_string(), "5".to_string()));
+        // -0 and 0 are the same value: no fallback to "-0"
+        assert_eq!(fmt_minmax(-0.0, 0.0), ("0".to_string(), "0".to_string()));
     }
 
     #[test]
