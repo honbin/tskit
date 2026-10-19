@@ -14,6 +14,7 @@
 
 use std::collections::BTreeMap;
 use std::io::{self, BufRead, Write};
+use std::process::ExitCode;
 
 use burst::{Summary, counts_by_second, summarize};
 use chrono::{FixedOffset, TimeZone};
@@ -39,16 +40,16 @@ plus total / peak / first / last / span. All lines must share one UTC offset.
 example:
     jq -r 'select(.status==502) | .time' alb.jsonl | ts-burst";
 
-fn main() -> io::Result<()> {
+fn main() -> ExitCode {
     if let Some(arg) = std::env::args().nth(1) {
         match arg.as_str() {
             "-h" | "--help" => {
                 println!("{HELP}");
-                return Ok(());
+                return ExitCode::SUCCESS;
             }
             other => {
                 eprintln!("ts-burst: unexpected argument: {other}\n\n{HELP}");
-                std::process::exit(1);
+                return ExitCode::FAILURE;
             }
         }
     }
@@ -58,7 +59,13 @@ fn main() -> io::Result<()> {
 
     let stdin = io::stdin();
     for line in stdin.lock().lines() {
-        let line = line?;
+        let line = match line {
+            Ok(line) => line,
+            Err(e) => {
+                eprintln!("ts-burst: read error: {e}");
+                return ExitCode::FAILURE;
+            }
+        };
         match parse_line(&line) {
             Some(dt) => {
                 let this = *dt.offset();
@@ -68,7 +75,7 @@ fn main() -> io::Result<()> {
                     // times stay aligned with the source log.
                     Some(first) if first != this => {
                         eprintln!("ts-burst: mixed UTC offsets: {first} and {this}");
-                        std::process::exit(1);
+                        return ExitCode::FAILURE;
                     }
                     Some(_) => {}
                 }
@@ -92,16 +99,20 @@ fn main() -> io::Result<()> {
             "ts-burst: no parseable timestamps on stdin \
              (expected RFC3339 with offset, e.g. 2026-09-03T10:21:31.124+09:00)"
         );
-        std::process::exit(1);
+        return ExitCode::FAILURE;
     };
     // summarize returned Some, so at least one line parsed and set the offset.
     let offset = offset.expect("offset is set whenever a timestamp parses");
 
-    match render(&counts, &summary, offset) {
+    if let Err(e) = render(&counts, &summary, offset) {
         // Downstream closed the pipe (e.g. `| head`): stop quietly.
-        Err(e) if e.kind() == io::ErrorKind::BrokenPipe => Ok(()),
-        result => result,
+        if e.kind() == io::ErrorKind::BrokenPipe {
+            return ExitCode::SUCCESS;
+        }
+        eprintln!("ts-burst: write error: {e}");
+        return ExitCode::FAILURE;
     }
+    ExitCode::SUCCESS
 }
 
 fn render(counts: &BTreeMap<i64, u64>, summary: &Summary, offset: FixedOffset) -> io::Result<()> {
