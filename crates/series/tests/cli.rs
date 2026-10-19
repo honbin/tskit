@@ -35,6 +35,20 @@ fn sorts_and_summarizes() {
 }
 
 #[test]
+fn sorts_within_the_same_second() {
+    // rows print at second resolution, so the values tell the order apart
+    let out = run("2026-09-03T10:20:00.900+09:00 9\n2026-09-03T10:20:00.100+09:00 1\n");
+    assert!(out.status.success());
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    let values: Vec<&str> = stdout
+        .lines()
+        .take_while(|l| !l.is_empty())
+        .filter_map(|l| l.split_whitespace().last())
+        .collect();
+    assert_eq!(values, ["1", "9"], "stdout:\n{stdout}");
+}
+
+#[test]
 fn skips_garbage_but_still_succeeds() {
     let out = run(include_str!("fixtures/invalid.txt"));
     assert!(out.status.success());
