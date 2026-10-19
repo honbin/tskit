@@ -40,3 +40,25 @@ fn empty_input_fails_cleanly() {
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert!(stderr.contains("no numbers"), "stderr:\n{stderr}");
 }
+
+#[test]
+fn closed_stdout_exits_quietly() {
+    // reader dropped before spawn, so every write hits a closed pipe (`| head`)
+    let (reader, writer) = std::io::pipe().unwrap();
+    drop(reader);
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ts-dist"))
+        .stdin(Stdio::piped())
+        .stdout(writer)
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn dist");
+    let _ = child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(include_str!("fixtures/numbers.txt").as_bytes());
+    let out = child.wait_with_output().expect("wait dist");
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(out.status.success(), "stderr:\n{stderr}");
+    assert!(!stderr.contains("Broken pipe"), "stderr:\n{stderr}");
+}

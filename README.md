@@ -264,7 +264,8 @@ ts-align req.txt lat.txt tasks.txt \
 
 where req / lat / tasks are CloudWatch RequestCount (Sum), TargetResponseTime
 (Average) and LiveTaskCount (Minimum). A `common N / per-file totals` line goes to
-stderr so dropped (non-common) timestamps are visible.
+stderr so dropped (non-common) timestamps are visible. Unparseable lines and
+duplicate timestamps (last value kept) are reported per file on stderr too.
 
 ## ts-timeline
 

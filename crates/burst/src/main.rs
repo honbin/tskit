@@ -97,7 +97,11 @@ fn main() -> io::Result<()> {
     // summarize returned Some, so at least one line parsed and set the offset.
     let offset = offset.expect("offset is set whenever a timestamp parses");
 
-    render(&counts, &summary, offset)
+    match render(&counts, &summary, offset) {
+        // Downstream closed the pipe (e.g. `| head`): stop quietly.
+        Err(e) if e.kind() == io::ErrorKind::BrokenPipe => Ok(()),
+        result => result,
+    }
 }
 
 fn render(counts: &BTreeMap<i64, u64>, summary: &Summary, offset: FixedOffset) -> io::Result<()> {
@@ -109,8 +113,7 @@ fn render(counts: &BTreeMap<i64, u64>, summary: &Summary, offset: FixedOffset) -
         );
     }
 
-    let stdout = io::stdout();
-    let mut out = stdout.lock();
+    let mut out = io::BufWriter::new(io::stdout().lock());
 
     let scale = summary.peak_count.max(1);
     if fill {
@@ -140,7 +143,7 @@ fn render(counts: &BTreeMap<i64, u64>, summary: &Summary, offset: FixedOffset) -
     writeln!(out, "first    {}", fmt_time(offset, summary.first_sec))?;
     writeln!(out, "last     {}", fmt_time(offset, summary.last_sec))?;
     writeln!(out, "span     {span}s (first→last)")?;
-    Ok(())
+    out.flush()
 }
 
 fn write_row(

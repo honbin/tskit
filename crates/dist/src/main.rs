@@ -8,10 +8,10 @@
 //!     jq -r .target_processing_time alb.jsonl | ts-dist
 //!     grep responseTime app.log | awk '{print $NF}' | ts-dist
 
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, Write};
 use std::process::ExitCode;
 
-use dist::{parse_number, summarize};
+use dist::{Stats, parse_number, summarize};
 
 const HELP: &str = "\
 ts-dist — summarize the distribution of a column of numbers
@@ -69,14 +69,26 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
 
-    println!("count    {:>10}", s.count);
-    println!("min      {:>10.3}", s.min);
-    println!("mean     {:>10.3}", s.mean);
-    println!("p50      {:>10.3}", s.p50);
-    println!("p90      {:>10.3}", s.p90);
-    println!("p95      {:>10.3}", s.p95);
-    println!("p99      {:>10.3}", s.p99);
-    println!("max      {:>10.3}", s.max);
-    println!("stddev   {:>10.3}", s.stddev);
+    let mut out = io::BufWriter::new(io::stdout().lock());
+    if let Err(e) = render(&mut out, &s).and_then(|()| out.flush()) {
+        // Downstream closed the pipe (e.g. `| head`): stop quietly.
+        if e.kind() == io::ErrorKind::BrokenPipe {
+            return ExitCode::SUCCESS;
+        }
+        eprintln!("ts-dist: write error: {e}");
+        return ExitCode::FAILURE;
+    }
     ExitCode::SUCCESS
+}
+
+fn render(out: &mut impl Write, s: &Stats) -> io::Result<()> {
+    writeln!(out, "count    {:>10}", s.count)?;
+    writeln!(out, "min      {:>10.3}", s.min)?;
+    writeln!(out, "mean     {:>10.3}", s.mean)?;
+    writeln!(out, "p50      {:>10.3}", s.p50)?;
+    writeln!(out, "p90      {:>10.3}", s.p90)?;
+    writeln!(out, "p95      {:>10.3}", s.p95)?;
+    writeln!(out, "p99      {:>10.3}", s.p99)?;
+    writeln!(out, "max      {:>10.3}", s.max)?;
+    writeln!(out, "stddev   {:>10.3}", s.stddev)
 }

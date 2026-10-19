@@ -63,3 +63,25 @@ fn empty_input_fails_cleanly() {
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert!(stderr.contains("no 'timestamp value'"), "stderr:\n{stderr}");
 }
+
+#[test]
+fn closed_stdout_exits_quietly() {
+    // reader dropped before spawn, so every write hits a closed pipe (`| head`)
+    let (reader, writer) = std::io::pipe().unwrap();
+    drop(reader);
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ts-series"))
+        .stdin(Stdio::piped())
+        .stdout(writer)
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn series");
+    let _ = child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(include_str!("fixtures/series.txt").as_bytes());
+    let out = child.wait_with_output().expect("wait series");
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(out.status.success(), "stderr:\n{stderr}");
+    assert!(!stderr.contains("Broken pipe"), "stderr:\n{stderr}");
+}
