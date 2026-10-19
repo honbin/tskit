@@ -69,3 +69,34 @@ fn rejects_bad_bound() {
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert!(stderr.contains("--from:"), "stderr:\n{stderr}");
 }
+
+#[test]
+fn field_reads_jsonl_and_keeps_records_verbatim() {
+    let input = r#"{"time":"2026-09-03T10:21:29+09:00","status":502}
+{"time":"2026-09-03T10:21:31+09:00","status":502}
+{"status":200}
+{"time":1788398491}
+"#;
+    let out = run(
+        &["--field", "time", "--from", "2026-09-03T10:21:30+09:00"],
+        input,
+    );
+    assert!(out.status.success());
+    assert_eq!(
+        String::from_utf8(out.stdout).unwrap(),
+        "{\"time\":\"2026-09-03T10:21:31+09:00\",\"status\":502}\n"
+    );
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(
+        stderr.contains("kept 1 / 4 lines (skipped 2 unparseable)"),
+        "stderr:\n{stderr}"
+    );
+}
+
+#[test]
+fn rejects_empty_field() {
+    let out = run(&["--field", "", "--from", "2026-09-03T10:21:30+09:00"], "");
+    assert!(!out.status.success());
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(stderr.contains("non-empty field name"), "stderr:\n{stderr}");
+}
