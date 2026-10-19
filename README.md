@@ -138,7 +138,7 @@ span     4s (first→last)
 ```
 # narrow a raw log to the incident window, then look at the shape
 cat alb.jsonl \
-  | ts-window --from 2026-09-03T10:20:00+09:00 --to 2026-09-03T10:30:00+09:00 \
+  | ts-window --field time --from 2026-09-03T10:20:00+09:00 --to 2026-09-03T10:30:00+09:00 \
   | jq -r 'select(.elb_status_code == 502) | .time' \
   | ts-burst
 ```
@@ -147,6 +147,11 @@ Reads the RFC3339 timestamp from each line (leading token, quotes stripped) and
 prints the original line unchanged when it falls in `[--from, --to]` (inclusive;
 at least one bound required). Comparison is on the instant, so the bounds and the
 lines may use any offset. A `kept N / total` summary goes to stderr.
+
+For JSONL, `--field <name>` reads the timestamp from that top-level string field
+instead of the leading token, so whole records pass through for `jq` downstream.
+Lines that aren't JSON objects, lack the field, or contain a non-string or
+invalid RFC3339 value count as unparseable.
 
 ## ts-window-audit
 
@@ -191,7 +196,7 @@ signals:
 ```
 # response-time distribution over a time window
 cat alb.jsonl \
-  | ts-window --from 2026-09-03T10:20:00+09:00 --to 2026-09-03T10:30:00+09:00 \
+  | ts-window --field time --from 2026-09-03T10:20:00+09:00 --to 2026-09-03T10:30:00+09:00 \
   | jq -r .target_processing_time \
   | ts-dist
 ```

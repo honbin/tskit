@@ -5,6 +5,15 @@
 
 use chrono::{DateTime, FixedOffset};
 
+/// Read an RFC3339 timestamp from a top-level string field of a JSON object line.
+///
+/// Lives here rather than in `tstamp`: only `window` needs the whole record to
+/// survive, so the other tools keep taking `jq -r .field` output.
+pub fn parse_field(line: &str, field: &str) -> Option<DateTime<FixedOffset>> {
+    let value: serde_json::Value = serde_json::from_str(line).ok()?;
+    DateTime::parse_from_rfc3339(value.get(field)?.as_str()?).ok()
+}
+
 /// Inclusive range test. A `None` bound is unbounded on that side.
 ///
 /// Comparison is on the instant (`DateTime` orders by UTC instant), so `from`
@@ -74,6 +83,20 @@ mod tests {
         let to = ts("2026-09-03T10:20:00+09:00");
         assert!(in_range(ts("2026-09-03T00:00:00+09:00"), None, Some(to)));
         assert!(!in_range(ts("2026-09-03T11:00:00+09:00"), None, Some(to)));
+    }
+
+    #[test]
+    fn parse_field_reads_named_top_level_string() {
+        let line = r#"{"time":"2026-09-03T10:21:31+09:00","elb_status_code":502}"#;
+        assert_eq!(
+            parse_field(line, "time"),
+            Some(ts("2026-09-03T10:21:31+09:00"))
+        );
+        assert!(parse_field(line, "timestamp").is_none()); // missing
+        assert!(parse_field(line, "elb_status_code").is_none()); // not a string
+        assert!(parse_field(r#"{"req":{"time":"2026-09-03T10:21:31Z"}}"#, "time").is_none());
+        assert!(parse_field("2026-09-03T10:21:31+09:00 plain", "time").is_none());
+        assert!(parse_field("", "time").is_none());
     }
 
     #[test]
