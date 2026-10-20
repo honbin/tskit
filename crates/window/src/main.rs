@@ -39,6 +39,22 @@ struct Args {
     field: Option<String>,
 }
 
+/// Read the value after `flag` into `slot` as an RFC3339 bound, rejecting a repeat.
+fn parse_bound(
+    flag: &str,
+    slot: &mut Option<DateTime<FixedOffset>>,
+    args: &mut impl Iterator<Item = String>,
+) -> Result<(), String> {
+    if slot.is_some() {
+        return Err(format!("{flag} given more than once"));
+    }
+    let v = args
+        .next()
+        .ok_or_else(|| format!("{flag} requires an RFC3339 value"))?;
+    *slot = Some(DateTime::parse_from_rfc3339(&v).map_err(|e| format!("{flag}: {e}"))?);
+    Ok(())
+}
+
 fn parse_args() -> Result<Args, String> {
     let mut from = None;
     let mut to = None;
@@ -46,20 +62,8 @@ fn parse_args() -> Result<Args, String> {
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
-            "--from" => {
-                if from.is_some() {
-                    return Err("--from given more than once".into());
-                }
-                let v = args.next().ok_or("--from requires an RFC3339 value")?;
-                from = Some(DateTime::parse_from_rfc3339(&v).map_err(|e| format!("--from: {e}"))?);
-            }
-            "--to" => {
-                if to.is_some() {
-                    return Err("--to given more than once".into());
-                }
-                let v = args.next().ok_or("--to requires an RFC3339 value")?;
-                to = Some(DateTime::parse_from_rfc3339(&v).map_err(|e| format!("--to: {e}"))?);
-            }
+            "--from" => parse_bound("--from", &mut from, &mut args)?,
+            "--to" => parse_bound("--to", &mut to, &mut args)?,
             "--field" => {
                 if field.is_some() {
                     return Err("--field given more than once".into());
