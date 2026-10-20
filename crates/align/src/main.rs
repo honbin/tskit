@@ -95,11 +95,11 @@ fn run() -> Result<ExitCode, String> {
             writeln!(out, "{line}")
         })
         .and_then(|()| out.flush());
-    if let Err(e) = written {
-        // Downstream closed the pipe (e.g. `| head`): stop quietly.
-        if e.kind() == io::ErrorKind::BrokenPipe {
-            return Ok(ExitCode::SUCCESS);
-        }
+    // A closed pipe (e.g. `| head`) only stops the rows: the summary below
+    // describes the whole input, and is most needed when the rows were cut short.
+    if let Err(e) = written
+        && e.kind() != io::ErrorKind::BrokenPipe
+    {
         return Err(format!("write error: {e}"));
     }
 

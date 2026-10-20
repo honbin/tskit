@@ -114,4 +114,8 @@ fn closed_stdout_exits_quietly() {
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert!(out.status.success(), "stderr:\n{stderr}");
     assert!(!stderr.contains("Broken pipe"), "stderr:\n{stderr}");
+    assert!(
+        stderr.contains("timestamps common to all 2 series"),
+        "stderr:\n{stderr}"
+    );
 }
