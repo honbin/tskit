@@ -75,17 +75,11 @@ fn run() -> Result<ExitCode, String> {
         .checked_mul(1_000_000_000)
         .ok_or_else(|| format!("--window {window_secs}s is too large (max ~292 years)"))?;
 
-    let (a, a_skipped) = load(&files[0])?;
-    let (b, b_skipped) = load(&files[1])?;
+    let a = load(&files[0])?;
+    let b = load(&files[1])?;
 
     let a_matched = count_matched(&a, &b, window_ns);
     let b_matched = count_matched(&b, &a, window_ns);
-
-    for (name, skipped) in [(&files[0], a_skipped), (&files[1], b_skipped)] {
-        if skipped > 0 {
-            eprintln!("ts-correlate: {name}: skipped {skipped} unparseable line(s)");
-        }
-    }
 
     let mut out = io::BufWriter::new(io::stdout().lock());
     let written = writeln!(out, "window    ±{window_secs}s")
@@ -104,12 +98,12 @@ fn run() -> Result<ExitCode, String> {
     Ok(ExitCode::SUCCESS)
 }
 
-/// Read a file of timestamps into sorted epoch nanoseconds, plus the count of
-/// unparseable (non-blank) lines. Errors if the file holds no timestamps.
+/// Read a file of timestamps into sorted epoch nanoseconds, reporting unparseable
+/// (non-blank) lines on stderr. Errors if the file holds no timestamps.
 ///
 /// Nanoseconds (the parser's full resolution): any coarser unit would collapse
 /// sub-unit gaps and compare distinct instants as within the window.
-fn load(path: &str) -> Result<(Vec<i64>, u64), String> {
+fn load(path: &str) -> Result<Vec<i64>, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
     let mut nanos: Vec<i64> = Vec::new();
     let mut skipped = 0u64;
@@ -125,11 +119,14 @@ fn load(path: &str) -> Result<(Vec<i64>, u64), String> {
             }
         }
     }
+    if skipped > 0 {
+        eprintln!("ts-correlate: {path}: skipped {skipped} unparseable line(s)");
+    }
     if nanos.is_empty() {
         return Err(format!("{path}: no timestamps found"));
     }
     nanos.sort_unstable();
-    Ok((nanos, skipped))
+    Ok(nanos)
 }
 
 fn report(out: &mut impl Write, name: &str, events: usize, matched: usize) -> io::Result<()> {

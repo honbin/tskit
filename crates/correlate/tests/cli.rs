@@ -60,6 +60,18 @@ fn needs_two_files() {
 }
 
 #[test]
+fn errors_on_a_file_with_no_timestamps() {
+    let bad = fixture("invalid.txt");
+    let b = fixture("b.txt");
+    let out = run(&[bad.as_str(), b.as_str()]);
+    assert!(!out.status.success());
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(stderr.contains("no timestamps found"), "stderr:\n{stderr}");
+    // the skipped count tells "wrong format" apart from "empty file"
+    assert!(stderr.contains("skipped 2"), "stderr:\n{stderr}");
+}
+
+#[test]
 fn rejects_bad_window() {
     let a = fixture("a.txt");
     let b = fixture("b.txt");

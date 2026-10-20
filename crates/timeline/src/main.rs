@@ -114,11 +114,11 @@ fn load_series(path: &str, offset: &mut Option<FixedOffset>) -> Result<Series, S
             }
         }
     }
-    if points.is_empty() {
-        return Err(format!("{path}: no 'timestamp value' points found"));
-    }
     if skipped > 0 {
         eprintln!("ts-timeline: {path}: skipped {skipped} unparseable line(s)");
+    }
+    if points.is_empty() {
+        return Err(format!("{path}: no 'timestamp value' points found"));
     }
     points.sort_by_key(|&(t, _)| t);
     Ok(Series {

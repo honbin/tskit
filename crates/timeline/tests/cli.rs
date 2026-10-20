@@ -87,6 +87,8 @@ fn errors_on_a_file_with_no_points() {
         stderr.contains("no 'timestamp value' points found"),
         "stderr:\n{stderr}"
     );
+    // the skipped count tells "wrong format" apart from "empty file"
+    assert!(stderr.contains("skipped 2"), "stderr:\n{stderr}");
 }
 
 #[test]
