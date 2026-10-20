@@ -15,7 +15,6 @@
 //! count if blank lines, headers, or an upstream filter sit in between. Rows
 //! dropped before this input are invisible to it.
 
-use std::fmt::Write as _;
 use std::io::{self, BufRead, Write};
 use std::process::ExitCode;
 
@@ -140,61 +139,53 @@ fn signal_name(s: &Signal) -> &'static str {
 }
 
 fn render(
+    out: &mut impl Write,
     window: &Window,
     observed: &Option<Observed>,
     rows: u64,
     skipped: u64,
     limit: Option<u64>,
     result: &Audit,
-) -> String {
-    let mut s = String::new();
-    let _ = writeln!(
-        s,
+) -> io::Result<()> {
+    writeln!(
+        out,
         "{:<10}{} → {}",
         "window",
         fmt_ts(window.from),
         fmt_ts(window.to)
-    );
+    )?;
     match observed {
-        Some(o) => {
-            let _ = writeln!(
-                s,
-                "{:<10}{} → {}",
-                "observed",
-                fmt_ts(o.first),
-                fmt_ts(o.last)
-            );
-        }
-        None => {
-            let _ = writeln!(s, "{:<10}(none)", "observed");
-        }
+        Some(o) => writeln!(
+            out,
+            "{:<10}{} → {}",
+            "observed",
+            fmt_ts(o.first),
+            fmt_ts(o.last)
+        )?,
+        None => writeln!(out, "{:<10}(none)", "observed")?,
     }
     match limit {
-        Some(l) => {
-            let _ = writeln!(s, "{:<10}{rows} / {l}", "rows");
-        }
-        None => {
-            let _ = writeln!(s, "{:<10}{rows}", "rows");
-        }
+        Some(l) => writeln!(out, "{:<10}{rows} / {l}", "rows")?,
+        None => writeln!(out, "{:<10}{rows}", "rows")?,
     }
     if skipped > 0 {
-        let _ = writeln!(s, "{:<10}{skipped}", "unparsed");
+        writeln!(out, "{:<10}{skipped}", "unparsed")?;
     }
     if let (Some(sg), Some(eg)) = (result.start_gap, result.end_gap) {
-        let _ = writeln!(s);
-        let _ = writeln!(s, "{:<10}{}", "start gap", fmt_dur(sg));
-        let _ = writeln!(s, "{:<10}{}", "end gap", fmt_dur(eg));
+        writeln!(out)?;
+        writeln!(out, "{:<10}{}", "start gap", fmt_dur(sg))?;
+        writeln!(out, "{:<10}{}", "end gap", fmt_dur(eg))?;
     }
-    let _ = writeln!(s);
+    writeln!(out)?;
     if result.signals.is_empty() {
-        let _ = writeln!(s, "{:<10}(none)", "signals:");
+        writeln!(out, "{:<10}(none)", "signals:")
     } else {
-        let _ = writeln!(s, "signals:");
+        writeln!(out, "signals:")?;
         for sig in &result.signals {
-            let _ = writeln!(s, "  {}", signal_name(sig));
+            writeln!(out, "  {}", signal_name(sig))?;
         }
+        Ok(())
     }
-    s
 }
 
 fn main() -> ExitCode {
@@ -250,9 +241,13 @@ fn main() -> ExitCode {
         _ => None,
     };
     let result = audit(&window, observed.as_ref(), rows, args.limit);
-    let report = render(&window, &observed, rows, skipped, args.limit, &result);
-
-    if let Err(e) = io::stdout().write_all(report.as_bytes()) {
+    let mut out = io::BufWriter::new(io::stdout().lock());
+    if let Err(e) = render(
+        &mut out, &window, &observed, rows, skipped, args.limit, &result,
+    )
+    .and_then(|()| out.flush())
+    {
+        // Downstream closed the pipe (e.g. `| head`): stop quietly.
         if e.kind() == io::ErrorKind::BrokenPipe {
             return ExitCode::SUCCESS;
         }
