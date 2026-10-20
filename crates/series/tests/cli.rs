@@ -94,3 +94,14 @@ fn closed_stdout_exits_quietly() {
     assert!(out.status.success(), "stderr:\n{stderr}");
     assert!(!stderr.contains("Broken pipe"), "stderr:\n{stderr}");
 }
+
+#[test]
+fn keeps_sub_millisecond_values_visible() {
+    // three decimals would print every value here as 0.000
+    let out = run("2026-09-03T10:20:00+09:00 0.0001\n2026-09-03T10:21:00+09:00 0.0004\n");
+    assert!(out.status.success());
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert!(stdout.contains("0.0001  at 10:20:00"), "stdout:\n{stdout}");
+    assert!(stdout.contains("0.0004  at 10:21:00"), "stdout:\n{stdout}");
+    assert!(!stdout.contains("0.000 "), "stdout:\n{stdout}");
+}

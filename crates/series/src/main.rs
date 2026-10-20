@@ -157,10 +157,12 @@ fn fmt_val(v: f64) -> String {
         return "0".to_string();
     }
     if v.fract() == 0.0 && v.abs() < 1e15 {
-        format!("{v:.0}")
-    } else {
-        format!("{v:.3}")
+        return format!("{v:.0}");
     }
+    if v.abs() < 0.0005 {
+        return format!("{v}"); // would vanish as 0.000 at 3 decimals — keep the real value
+    }
+    format!("{v:.3}")
 }
 
 /// Format a timestamp as `HH:MM:SS` in its own offset, matching `burst` so the
