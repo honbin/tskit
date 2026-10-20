@@ -10,21 +10,15 @@ pub fn inner_join<K: Ord + Copy>(series: &[BTreeMap<K, f64>]) -> Vec<(K, Vec<f64
     let Some((first, rest)) = series.split_first() else {
         return Vec::new();
     };
-    let mut rows = Vec::new();
-    for (&ts, &v0) in first {
-        let mut values = Vec::with_capacity(series.len());
-        values.push(v0);
-        if rest.iter().all(|map| match map.get(&ts) {
-            Some(&v) => {
-                values.push(v);
-                true
-            }
-            None => false,
-        }) {
-            rows.push((ts, values));
-        }
-    }
-    rows
+    first
+        .iter()
+        .filter_map(|(&ts, &v0)| {
+            let values = std::iter::once(Some(v0))
+                .chain(rest.iter().map(|map| map.get(&ts).copied()))
+                .collect::<Option<Vec<f64>>>()?;
+            Some((ts, values))
+        })
+        .collect()
 }
 
 #[cfg(test)]

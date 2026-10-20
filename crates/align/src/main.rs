@@ -68,12 +68,10 @@ fn run() -> Result<ExitCode, String> {
     }
 
     let mut maps: Vec<Series> = Vec::with_capacity(files.len());
-    let mut totals: Vec<usize> = Vec::with_capacity(files.len());
     let mut offset: Option<FixedOffset> = None;
     for path in &files {
-        let (map, off, n) = load(path)?;
+        let (map, off) = load(path)?;
         offset.get_or_insert(off);
-        totals.push(n);
         maps.push(map);
     }
     // every file had ≥1 point (load errors otherwise), so the offset is set
@@ -106,8 +104,8 @@ fn run() -> Result<ExitCode, String> {
     // report what the inner join dropped, so non-common timestamps aren't silent
     let per_file = files
         .iter()
-        .zip(&totals)
-        .map(|(f, n)| format!("{f}={n}"))
+        .zip(&maps)
+        .map(|(f, map)| format!("{f}={}", map.len()))
         .collect::<Vec<_>>()
         .join(", ");
     eprintln!(
@@ -119,13 +117,13 @@ fn run() -> Result<ExitCode, String> {
 }
 
 /// Read a file of `timestamp value` points into a map keyed by UTC instant
-/// (last value wins on a duplicate timestamp), plus the input's offset and point
-/// count. Errors if the file holds no points.
+/// (last value wins on a duplicate timestamp), plus the input's offset. Errors if
+/// the file holds no points.
 ///
 /// Unparseable lines and duplicate timestamps are reported on stderr: the
 /// per-file count is of distinct timestamps, so without this both would vanish
 /// from the summary unnoticed.
-fn load(path: &str) -> Result<(Series, FixedOffset, usize), String> {
+fn load(path: &str) -> Result<(Series, FixedOffset), String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
     let mut map = BTreeMap::new();
     let mut offset = None;
@@ -154,10 +152,7 @@ fn load(path: &str) -> Result<(Series, FixedOffset, usize), String> {
         eprintln!("ts-align: {path}: {duplicates} duplicate timestamp(s), last value kept");
     }
     match offset {
-        Some(off) => {
-            let n = map.len();
-            Ok((map, off, n))
-        }
+        Some(off) => Ok((map, off)),
         None => Err(format!("{path}: no 'timestamp value' points found")),
     }
 }
