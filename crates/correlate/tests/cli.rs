@@ -1,7 +1,7 @@
 //! End-to-end smoke tests: run the built binary against fixture files.
 //! Uses `CARGO_BIN_EXE_ts-correlate` and `CARGO_MANIFEST_DIR` (set by Cargo).
 
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 
 fn run(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_ts-correlate"))
@@ -80,4 +80,22 @@ fn rejects_repeated_window() {
         stderr.contains("--window given more than once"),
         "stderr:\n{stderr}"
     );
+}
+
+#[test]
+fn closed_stdout_exits_quietly() {
+    // reader dropped before spawn, so every write hits a closed pipe (`| head`)
+    let (reader, writer) = std::io::pipe().unwrap();
+    drop(reader);
+    let a = fixture("a.txt");
+    let b = fixture("b.txt");
+    let out = Command::new(env!("CARGO_BIN_EXE_ts-correlate"))
+        .args([a.as_str(), b.as_str()])
+        .stdout(writer)
+        .stderr(Stdio::piped())
+        .output()
+        .expect("run correlate");
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(out.status.success(), "stderr:\n{stderr}");
+    assert!(!stderr.contains("Broken pipe"), "stderr:\n{stderr}");
 }

@@ -9,6 +9,7 @@
 //! example:
 //!     ts-correlate 502.txt sigterm.txt --window 5s
 
+use std::io::{self, Write};
 use std::process::ExitCode;
 
 use correlate::{count_matched, parse_duration_secs};
@@ -80,11 +81,26 @@ fn run() -> Result<ExitCode, String> {
     let a_matched = count_matched(&a, &b, window_ns);
     let b_matched = count_matched(&b, &a, window_ns);
 
-    println!("window    ±{window_secs}s");
-    println!();
-    report(&files[0], a.len(), a_matched, a_skipped);
-    println!();
-    report(&files[1], b.len(), b_matched, b_skipped);
+    for (name, skipped) in [(&files[0], a_skipped), (&files[1], b_skipped)] {
+        if skipped > 0 {
+            eprintln!("ts-correlate: {name}: skipped {skipped} unparseable line(s)");
+        }
+    }
+
+    let mut out = io::BufWriter::new(io::stdout().lock());
+    let written = writeln!(out, "window    ±{window_secs}s")
+        .and_then(|()| writeln!(out))
+        .and_then(|()| report(&mut out, &files[0], a.len(), a_matched))
+        .and_then(|()| writeln!(out))
+        .and_then(|()| report(&mut out, &files[1], b.len(), b_matched))
+        .and_then(|()| out.flush());
+    if let Err(e) = written {
+        // Downstream closed the pipe (e.g. `| head`): stop quietly.
+        if e.kind() == io::ErrorKind::BrokenPipe {
+            return Ok(ExitCode::SUCCESS);
+        }
+        return Err(format!("write error: {e}"));
+    }
     Ok(ExitCode::SUCCESS)
 }
 
@@ -116,16 +132,13 @@ fn load(path: &str) -> Result<(Vec<i64>, u64), String> {
     Ok((nanos, skipped))
 }
 
-fn report(name: &str, events: usize, matched: usize, skipped: u64) {
+fn report(out: &mut impl Write, name: &str, events: usize, matched: usize) -> io::Result<()> {
     let pct = if events > 0 {
         matched as f64 / events as f64 * 100.0
     } else {
         0.0
     };
-    println!("{name}");
-    println!("  events   {events:>8}");
-    println!("  matched  {matched:>8}   {pct:.1}%");
-    if skipped > 0 {
-        eprintln!("ts-correlate: {name}: skipped {skipped} unparseable line(s)");
-    }
+    writeln!(out, "{name}")?;
+    writeln!(out, "  events   {events:>8}")?;
+    writeln!(out, "  matched  {matched:>8}   {pct:.1}%")
 }
