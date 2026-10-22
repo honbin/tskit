@@ -103,23 +103,19 @@ fn main() -> ExitCode {
 }
 
 fn render(out: &mut impl Write, points: &[(DateTime<FixedOffset>, f64)]) -> io::Result<()> {
-    let min = points.iter().map(|(_, v)| *v).fold(f64::INFINITY, f64::min);
-    let max = points
-        .iter()
-        .map(|(_, v)| *v)
-        .fold(f64::NEG_INFINITY, f64::max);
+    // Strict comparisons keep the first occurrence of each extreme.
+    let (first, rest) = points.split_first().expect("points is non-empty");
+    let (mut lo, mut hi) = (first, first);
+    for p in rest {
+        if p.1 < lo.1 {
+            lo = p;
+        }
+        if p.1 > hi.1 {
+            hi = p;
+        }
+    }
+    let ((min_ts, min), (max_ts, max)) = (*lo, *hi);
     let sum: f64 = points.iter().map(|(_, v)| *v).sum();
-    // first occurrence of each extreme (fold used the actual values, so == holds)
-    let min_ts = points
-        .iter()
-        .find(|(_, v)| *v == min)
-        .map(|(ts, _)| *ts)
-        .unwrap();
-    let max_ts = points
-        .iter()
-        .find(|(_, v)| *v == max)
-        .map(|(ts, _)| *ts)
-        .unwrap();
 
     for (ts, value) in points {
         writeln!(
