@@ -21,6 +21,7 @@ pub fn counts_by_second(epoch_secs: &[i64]) -> BTreeMap<i64, u64> {
 pub struct Summary {
     pub total: u64,
     pub peak_count: u64,
+    /// The earliest second that reached `peak_count`: when the burst first peaked.
     pub peak_sec: i64,
     pub first_sec: i64,
     pub last_sec: i64,
@@ -72,6 +73,12 @@ mod tests {
                 last_sec: base + 2,
             }
         );
+    }
+
+    #[test]
+    fn a_tied_peak_stays_at_its_earliest_second() {
+        let summary = summarize(&counts_by_second(&[10, 11, 11, 12, 12])).unwrap();
+        assert_eq!((summary.peak_count, summary.peak_sec), (2, 11));
     }
 
     #[test]
