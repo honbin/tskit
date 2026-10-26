@@ -105,8 +105,10 @@ mod tests {
         assert_eq!(s.min, 1.0);
         assert_eq!(s.max, 10.0);
         assert_eq!(s.mean, 5.5);
+        assert_eq!(s.stddev, 8.25_f64.sqrt());
         assert_eq!(s.p50, 5.0);
         assert_eq!(s.p90, 9.0);
+        assert_eq!(s.p95, 10.0);
         assert_eq!(s.p99, 10.0);
     }
 
