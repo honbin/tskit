@@ -368,6 +368,16 @@ mod tests {
     }
 
     #[test]
+    fn series_name_is_escaped_in_the_heading() {
+        let s = Series {
+            name: "a<b&c.txt".to_string(),
+            points: vec![(0, 1.0)],
+        };
+        let html = render_html(&[s], FixedOffset::east_opt(0).unwrap());
+        assert!(html.contains("<h2>a&lt;b&amp;c.txt</h2>"), "{html}");
+    }
+
+    #[test]
     fn min_max_label_rounds_but_never_hides() {
         assert_eq!(fmt_val(3.049744988363931), "3.050");
         assert_eq!(fmt_val(13158.0), "13158");
