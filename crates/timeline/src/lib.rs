@@ -327,12 +327,44 @@ mod tests {
     fn y_inverts_the_value_axis() {
         assert!((y(10.0, 0.0, 10.0) - PAD_T).abs() < 1e-9); // max -> top
         assert!((y(0.0, 0.0, 10.0) - (CHART_H - PAD_B)).abs() < 1e-9); // min -> baseline
+        assert!((y(20.0, 10.0, 20.0) - PAD_T).abs() < 1e-9); // a range not starting at 0
+        assert!((y(10.0, 10.0, 20.0) - (CHART_H - PAD_B)).abs() < 1e-9);
     }
 
     #[test]
     fn y_flat_series_sits_mid() {
         let mid = (CHART_H - PAD_B) - 0.5 * (CHART_H - PAD_T - PAD_B);
         assert!((y(5.0, 5.0, 5.0) - mid).abs() < 1e-9);
+    }
+
+    fn series(points: &[(i64, f64)]) -> Series {
+        Series {
+            name: "s".to_string(),
+            points: points.to_vec(),
+        }
+    }
+
+    #[test]
+    fn time_range_spans_every_series() {
+        let utc = FixedOffset::east_opt(0).unwrap();
+        let r = time_range(
+            &[series(&[(300, 1.0), (500, 2.0)]), series(&[(100, 0.0)])],
+            utc,
+        );
+        assert_eq!((r.start, r.end), (100, 500));
+        let one = time_range(&[series(&[(42, 1.0)])], utc);
+        assert_eq!((one.start, one.end), (42, 42));
+        let none = time_range(&[series(&[])], utc);
+        assert_eq!((none.start, none.end), (0, 0));
+    }
+
+    #[test]
+    fn value_range_is_the_series_min_and_max() {
+        assert_eq!(
+            value_range(&[(0, 3.0), (1, -2.0), (2, 7.5)]),
+            Some((-2.0, 7.5))
+        );
+        assert_eq!(value_range(&[]), None);
     }
 
     #[test]
