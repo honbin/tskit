@@ -147,3 +147,26 @@ fn rejects_repeated_flag() {
         "stderr:\n{stderr}"
     );
 }
+
+#[test]
+fn closed_stdout_exits_quietly() {
+    // reader dropped before spawn, so every write hits a closed pipe (`| head`);
+    // a small output first fails at the final flush, a large one mid-stream
+    let line = "2026-10-26T10:21:31+09:00 x\n";
+    for stdin in [line.to_string(), line.repeat(1000)] {
+        let (reader, writer) = std::io::pipe().unwrap();
+        drop(reader);
+        let mut child = Command::new(env!("CARGO_BIN_EXE_ts-window"))
+            .args(["--from", "2026-10-26T10:21:30+09:00"])
+            .stdin(Stdio::piped())
+            .stdout(writer)
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("spawn window");
+        let _ = child.stdin.take().unwrap().write_all(stdin.as_bytes());
+        let out = child.wait_with_output().expect("wait window");
+        let stderr = String::from_utf8(out.stderr).unwrap();
+        assert!(out.status.success(), "stderr:\n{stderr}");
+        assert!(!stderr.contains("Broken pipe"), "stderr:\n{stderr}");
+    }
+}
