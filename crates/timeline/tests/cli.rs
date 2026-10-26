@@ -1,7 +1,7 @@
 //! End-to-end smoke tests: run the built binary against fixture files.
 //! Uses `CARGO_BIN_EXE_ts-timeline` and `CARGO_MANIFEST_DIR` (set by Cargo).
 
-use std::process::{Command, Output, Stdio};
+use std::process::{Command, Output};
 
 fn run(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_ts-timeline"))
@@ -119,7 +119,6 @@ fn closed_stdout_exits_quietly() {
     let out = Command::new(env!("CARGO_BIN_EXE_ts-timeline"))
         .args(["--series", cpu.as_str()])
         .stdout(writer)
-        .stderr(Stdio::piped())
         .output()
         .expect("run timeline");
     let stderr = String::from_utf8(out.stderr).unwrap();
