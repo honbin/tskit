@@ -74,6 +74,14 @@ fn empty_input_fails_cleanly() {
 }
 
 #[test]
+fn rejects_mixed_offsets() {
+    let out = run("2026-10-26T10:20:00+09:00 1\n2026-10-26T01:21:00Z 2\n");
+    assert!(!out.status.success());
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(stderr.contains("mixed UTC offsets"), "stderr:\n{stderr}");
+}
+
+#[test]
 fn closed_stdout_exits_quietly() {
     // reader dropped before spawn, so every write hits a closed pipe (`| head`)
     let (reader, writer) = std::io::pipe().unwrap();

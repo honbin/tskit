@@ -132,6 +132,8 @@ mod tests {
         let o = obs("2026-10-10T10:08:00+09:00", "2026-10-10T10:47:00+09:00");
         let a = audit(&win(), Some(&o), 10000, None);
         assert!(a.signals.is_empty());
+        let zero = audit(&win(), Some(&o), 10000, Some(0));
+        assert!(zero.signals.is_empty());
     }
 
     #[test]

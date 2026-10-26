@@ -141,6 +141,15 @@ fn rejects_from_after_to() {
 }
 
 #[test]
+fn accepts_equal_bounds() {
+    let at = "2026-10-26T10:00:00+09:00";
+    let out = run(&["--from", at, "--to", at], "2026-10-26T10:00:00+09:00\n");
+    assert!(out.status.success());
+    let s = String::from_utf8(out.stdout).unwrap();
+    assert!(s.contains("signals:  (none)"), "{s}");
+}
+
+#[test]
 fn rejects_bad_bound() {
     let out = run(
         &["--from", "nonsense", "--to", "2026-10-10T11:00:00+09:00"],

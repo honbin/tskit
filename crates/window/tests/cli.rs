@@ -71,6 +71,34 @@ fn rejects_bad_bound() {
 }
 
 #[test]
+fn rejects_from_after_to() {
+    let out = run(
+        &[
+            "--from",
+            "2026-10-26T10:21:35+09:00",
+            "--to",
+            "2026-10-26T10:21:30+09:00",
+        ],
+        "",
+    );
+    assert!(!out.status.success());
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(stderr.contains("is after"), "stderr:\n{stderr}");
+}
+
+#[test]
+fn equal_bounds_keep_that_instant() {
+    let at = "2026-10-26T10:21:31+09:00";
+    let out = run(
+        &["--from", at, "--to", at],
+        "2026-10-26T10:21:30+09:00 before\n2026-10-26T10:21:31+09:00 at\n",
+    );
+    assert!(out.status.success());
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert_eq!(stdout, "2026-10-26T10:21:31+09:00 at\n");
+}
+
+#[test]
 fn field_reads_jsonl_and_keeps_records_verbatim() {
     let input = r#"{"time":"2026-09-03T10:21:29+09:00","status":502}
 {"time":"2026-09-03T10:21:31+09:00","status":502}
