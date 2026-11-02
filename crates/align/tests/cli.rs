@@ -41,6 +41,23 @@ fn joins_on_common_timestamps() {
 }
 
 #[test]
+fn joins_the_same_instant_across_utc_offsets() {
+    // 10:00+09:00 and 01:00Z are one instant; the two 10:01s share a wall clock
+    // but are nine hours apart, so they must not join
+    let jst = fixture("offset-jst.txt");
+    let utc = fixture("offset-utc.txt");
+    let out = run(&[jst.as_str(), utc.as_str()]);
+    assert!(out.status.success());
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert_eq!(stdout, "2026-11-02T10:00:00+09:00\t1\t10\n");
+
+    // shown in the first file's offset
+    let out = run(&[utc.as_str(), jst.as_str()]);
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert_eq!(stdout, "2026-11-02T01:00:00+00:00\t10\t1\n");
+}
+
+#[test]
 fn preserves_small_value_precision() {
     // align feeds downstream math, so a small value must not be rounded to 0.000
     let a = fixture("prec-a.txt");
